@@ -1,0 +1,58 @@
+.tree .item {
+  position: relative;
+  display: flex; align-items: flex-start; flex-wrap: wrap;
+}
+.tree .item>i, .tree .item>svg, .tree .item>img {
+  flex-basis: 1.4em;
+  margin-top: 0.25em;
+  height: 1em;
+}
+.tree .item>span {
+  cursor: pointer;
+  position: relative;
+  padding-left: 0.2em;
+  flex-basis: calc(100% - 1.4em);
+  max-width: calc(100% - 1.4em);
+  white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+}
+.tree .item>span::before {
+  content: "";
+  position: absolute; top: 0; left: -1.5em; right: 0; bottom: 0;
+  border-radius: 0.2em;
+  z-index: -1;
+}
+.tree .item>span:hover::before {
+  background: #eee;
+}
+
+.tree .item.selected>span {
+  font-weight: bold; color: #c44f51;
+}
+.tree .item.selected>i, .tree .item.selected>svg, .tree .item.selected>img {
+  color: #c44f51;
+}
+
+.tree .tree {
+  position: relative;
+  flex-basis: 100%;
+  margin-left: 1.4em;
+}
+.tree .tree .tree::before {
+  content: "";
+  position: absolute; top: -0.8em; bottom: 0; left: -2.1em;
+  border-left: 1px solid #ccc;
+}
+
+.tree .tree .item::before {
+  content: "";
+  border-left: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
+  position: absolute; top: -0.8em; left: -0.7em;
+  width: 0.5em; height: 1.6em;
+}
+.tree .tree .item:first-child::before {
+  top: -0.2em; height: 1em;
+}
+.tree .tree .item:last-child::before {
+  border-bottom-left-radius: 0.2em;
+}

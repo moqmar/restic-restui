@@ -1,0 +1,368 @@
+<!doctype html>
+<title>restic</title>
+<meta charset="utf-8">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,400italic,700,700italic">
+<link rel="stylesheet" href="https://cdn.rawgit.com/necolas/normalize.css/master/normalize.css">
+<link rel="stylesheet" href="https://cdn.rawgit.com/milligram/milligram/master/dist/milligram.min.css">
+<script defer src="https://use.fontawesome.com/releases/v5.0.6/js/all.js"></script>
+<link rel="stylesheet" href="tree.css">
+<style>
+  /* https://gist.github.com/moqmar/3f85da818f8369f429d180e30299dd7d */
+  .modal,[hidden]{display:none !important}.modal{position:fixed;z-index:1000;background:rgba(0,0,0,.6)}.modal>label,:checked+.modal{display:flex !important}.modal,.modal>label{top:0;left:0;right:0;bottom:0;padding:15px;flex-direction:column;align-items:center;justify-content:center}.modal>label{position:absolute}.modal>div,.modal>label>div{position:relative;box-sizing:border-box;background:#fff;border-radius:3px;padding:25px;max-height:100%;max-width:100%;width:500px;overflow-x:hidden;overflow-y:auto}
+  
+  .modal>div { overflow: hidden; display: flex; flex-direction: column; padding: 0; max-height: 80%; }
+  .modal h3 {
+    flex: none; padding: 25px; margin: 0;
+    background: #c44f51;
+    color: #fff;
+  }
+  .modal>div>label {
+    position: absolute; top: 30px; right: 30px;
+    color: #fff; cursor: pointer;
+  }
+  .modal>div>.tree {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 25px;
+  }
+  .modal .tree .fa-times {
+    margin-left: 0.3em;
+    color: #ccc;
+    font-size: 0.8em;
+    cursor: pointer;
+    position: relative;
+    top: -0.1em;
+  }
+  .modal .tree .fa-times:hover {
+    color: #c44f51;
+  }
+  
+  .tree .fa-asterisk {
+    font-size: 0.8em;
+    color: #c44f51;
+    margin-left: 0.3em;
+    position: relative;
+    top: -0.1em;
+  }
+  
+  body { color: #222; }
+  h1 { background: #eee; border-bottom: 3px solid #c44f51; margin-bottom: 0; }
+  .button { background: #c44f51; border-color: #c44f51; }
+  .button.button-outline, a { color: #c44f51; }
+  input, select, .button.button-outline { background: #fff; }
+  input:focus, select:focus { border-color: #c44f51; }
+  
+  .wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; }
+  a { cursor: pointer; }
+  hr { border-color: #e1e1e1; }
+  .column { position: relative; overflow-x: hidden; }
+  .filelist { width: 100%; max-width: 100%; }
+  .filelist tr>:first-child { min-width: 1.5em; padding-top: 1.5rem; padding-right: 0; text-align: center; }
+  .filelist td:first-child input { margin: 0; }
+  .filelist td:not(:nth-child(2)) { white-space: nowrap; }
+  .filelist td:nth-child(2) { width: 99%; font-weight: bold; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+  .filelist svg { width: 1.3em !important; margin-right: 0.3em; }
+  .filelist td:last-child { padding-right: 0.5em; }
+  .filelist tbody tr:hover { background: #eee; }
+  .selection { margin-top: -1.5em; margin-bottom: 1em; padding-left: 0.6em; }
+  .selection a { font-weight: bold; }
+</style>
+
+<main class="wrapper">
+  <h1 style="padding: 15px 15px; box-sizing: border-box; flex: none;"><img src="restic-logo.png" style="height: 1.2em; vertical-align: top"> restic webrestore</h1>
+  <div class="row main-view" style="flex: 1 1 auto; overflow: hidden">
+    <div class="column column-25" style="background: #eee; padding: 25px; overflow-y: auto;">
+      <h3>Repository</h3>
+      <label for="type">Repository Type:</label>
+      <select id="type" v-model="repositoryType">
+        <option>Local</option>
+        <option>SFTP</option>
+        <option>REST Server</option>
+        <option>Amazon S3</option>
+        <option>Minio</option>
+        <option>OpenStack Swift</option>
+        <option>Backblaze B2</option>
+        <option>Microsoft Azure Blob Storage</option>
+        <option>Google Cloud Storage</option>
+      </select>
+      <!-- Repository Options -->
+      <div class="clearfix"><a class="button button-outline float-right">Connect</a></div>
+      <label for="snapshot">Snapshot:</label>
+      <div style="display: flex;">
+        <select id="snapshot" style="border-right: none; border-top-right-radius: 0; border-bottom-right-radius: 0;">
+          <option>2018-02-01 12:23:34</option>
+        </select>
+        <a class="button button-outline float-right" style="border-top-left-radius: 0; border-bottom-left-radius: 0; padding-left: 1em; padding-right: 1em;">Load</a>
+      </div>
+      <label for="restoretype">Restore Type:</label>
+      <select id="restoretype">
+        <option>Select Files</option>
+        <option>Restore Everything</option>
+      </select>
+      <hr>
+      <label for="target">Restore to:</label>
+      <select>
+        <option>Original location</option>
+        <option>Custom location</option>
+        <option>Download files (compressed .zip)</option>
+      </select><br><br>
+      <div style="text-align: center;">
+        <strong>
+          Restoring 2.125.211 files (25.91 GB)<br>
+          <label for="filetree" style="display: inline"><a>Show Tree</a></label>
+        </strong><br><br>
+        <a class="button" style="font-size: 1.3em; height: auto; padding: 0.5em 2em;">Restore</a>
+      </div>
+    </div>
+    <div class="column" style="padding: 25px; overflow-y: auto;">
+      <h3>Browse &amp; Select Files</h3>
+      <table class="filelist">
+        <thead><tr>
+          <th><i class="fa fa-arrow-circle-down" style="margin-left: 0.35em"></i></th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Size</th>
+          <th>Modified</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td><i class="fas fa-folder"></i><a title="...">helloworld123</a></td>
+            <td class="type">Folder</td>
+            <td>~15 GB</td>
+            <td>2018-01-02 12:23:34</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td><i class="fas fa-folder"></i><a>test</a></td>
+            <td class="type">Folder</td>
+            <td>~15 GB</td>
+            <td>2018-01-02 12:23:34</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td><i class="fas fa-folder"></i><a>helloworld456</a></td>
+            <td class="type">Folder</td>
+            <td>~15 GB</td>
+            <td>2018-01-02 12:23:34</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td><i class="far fa-file"></i><a>testing.txt</a></td>
+            <td class="type">Text File</td>
+            <td>1.23 KB</td>
+            <td>2018-01-02 12:23:34</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="selection">
+        └─&nbsp; Select: <a>All</a> / <a>None</a>
+      </div>
+    </div>
+    <div class="column column-20" style="padding: 25px; overflow-y: auto; border-left: 3px solid #eee;">
+      <div class="tree">
+        <div class="item selected">
+          <i class="fas fa-folder-open"></i>
+          <span>Example folder</span>
+          <div class="tree">
+            <div class="item">
+              <i class="fa fa-folder"></i>
+              <span>helloworld123</span>
+            </div>
+            <div class="item">
+              <i class="fa fa-folder-open"></i>
+              <span>test</span>
+              <div class="tree">
+                <div class="item">
+                  <i class="fa fa-folder"></i>
+                  <span>stuff</span>
+                </div>
+              </div>
+            </div>
+            <div class="item">
+              <i class="fa fa-folder"></i>
+              <span>helloworld456</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <br>
+    </div>
+  </div>
+</main>
+
+<input id="filetree" type="checkbox" hidden><div class="modal">
+  <label for="filetree"></label><!-- close modal on click -->
+  <div><!-- modal contents -->
+    <label for="filetree"><i class="fa fa-times"></i></label>
+    <h3>Files To Restore</h3>
+    <div class="tree">
+      <div class="item">
+        <i class="fas fa-folder-open"></i>
+        <span>Example folder <i class="fa fa-times"></i></span>
+        <div class="tree">
+          <div class="item">
+            <i class="fa fa-folder"></i>
+            <span>helloworld123 <i class="fa fa-times"></i></span>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>moarstuff <i class="fa fa-times"></i></span>
+              </div>
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>lottastuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>moarstuff <i class="fa fa-times"></i></span>
+              </div>
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>lottastuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>moarstuff <i class="fa fa-times"></i></span>
+              </div>
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>lottastuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>moarstuff <i class="fa fa-times"></i></span>
+              </div>
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>lottastuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>moarstuff <i class="fa fa-times"></i></span>
+              </div>
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>lottastuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder-open"></i>
+            <span>test <i class="fa fa-times"></i></span>
+            <div class="tree">
+              <div class="item">
+                <i class="fa fa-folder"></i>
+                <span>stuff <i class="fa fa-times"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="item">
+            <i class="fa fa-folder"></i>
+            <span>helloworld456 <i class="fa fa-times"></i></span>
+          </div>
+        </div>
+      </div>
+      <br>
+    </div>
+  </div>
+</div>
